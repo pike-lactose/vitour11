@@ -1,0 +1,178 @@
+.activity-log {
+  padding: 20px;
+}
+
+.activity-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.activity-log-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.activity-log-subtitle {
+  font-size: 0.9rem;
+  color: #718096;
+  margin-top: 4px;
+}
+
+.refresh-log-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #4a5568;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-log-btn:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.logs-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #718096;
+}
+
+.logs-loading .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #1e3a5f;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.logs-loading p {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.logs-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #a0aec0;
+  font-size: 0.95rem;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px dashed #e2e8f0;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 32px;
+  padding-bottom: 24px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: -8px;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border: 2px solid #1e3a5f;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e3a5f;
+  z-index: 1;
+}
+
+.timeline-item:nth-child(even) .timeline-icon {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+
+.timeline-content {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.timeline-content:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: #cbd5e0;
+}
+
+.timeline-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.timeline-action {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.timeline-item-name {
+  font-size: 0.9rem;
+  color: #1e3a5f;
+  background: rgba(30, 58, 95, 0.06);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.timeline-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeline-time {
+  cursor: default;
+}

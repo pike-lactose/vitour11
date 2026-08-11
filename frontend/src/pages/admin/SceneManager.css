@@ -1,0 +1,403 @@
+.scene-manager-modern {
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.sc-toast {
+  padding: 12px 20px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sc-toast-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.sc-toast-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.sc-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.sc-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.sc-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.01em;
+}
+
+.sc-title-icon {
+  width: 20px;
+  height: 20px;
+  color: #3b5a81;
+}
+
+.sc-form-group {
+  margin-bottom: 18px;
+}
+
+.sc-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.sc-input,
+.sc-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.sc-input:focus,
+.sc-textarea:focus {
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.sc-input::placeholder,
+.sc-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.sc-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.sc-file-input {
+  position: relative;
+}
+
+.sc-file-input input[type="file"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f7f8fa;
+  color: #1a1a1a;
+  font-size: 14px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.sc-file-input input[type="file"]:hover {
+  border-color: #1e3a5f;
+}
+
+.sc-file-name {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.sc-btn-primary {
+  width: 100%;
+  padding: 12px 20px;
+  background: #1e3a5f;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(30, 58, 95, 0.2);
+}
+
+.sc-btn-primary:hover {
+  background: #2a4a6f;
+}
+
+.sc-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sc-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.sc-btn-icon-spin {
+  animation: sc-spin 1s linear infinite;
+}
+
+@keyframes sc-spin {
+  to { transform: rotate(360deg); }
+}
+
+.sc-scenes-table {
+  overflow-x: auto;
+}
+
+.sc-scenes-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sc-scenes-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sc-scenes-table td {
+  padding: 12px;
+  font-size: 14px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.sc-scenes-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sc-scenes-table tr:hover td {
+  background: #f9fafb;
+}
+
+.sc-desc-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-thumbnail {
+  width: 64px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.sc-input-sm {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.sc-textarea-sm {
+  padding: 6px 8px;
+  font-size: 13px;
+  min-height: 50px;
+}
+
+.sc-btn-sm {
+  padding: 6px;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+}
+
+.sc-btn-sm:hover {
+  background: #f3f4f6;
+}
+
+.sc-btn-save {
+  color: #059669;
+}
+
+.sc-btn-save:hover {
+  background: #d1fae5;
+}
+
+.sc-btn-cancel {
+  color: #dc2626;
+}
+
+.sc-btn-cancel:hover {
+  background: #fee2e2;
+}
+
+.sc-btn-edit {
+  color: #3b5a81;
+}
+
+.sc-btn-edit:hover {
+  background: rgba(59, 90, 129, 0.1);
+}
+
+.sc-btn-delete {
+  color: #dc2626;
+}
+
+.sc-btn-delete:hover {
+  background: #fee2e2;
+}
+
+.sc-btn-icon-sm {
+  width: 14px;
+  height: 14px;
+}
+
+.sc-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.sc-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.sc-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(0, 0, 0, 0.08);
+  border-top-color: #1e3a5f;
+  border-radius: 50%;
+  animation: sc-spin 0.8s linear infinite;
+}
+
+@media (max-width: 1024px) {
+  .sc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .sc-scenes-table {
+    display: none;
+  }
+
+  .sc-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sc-scene-card {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .sc-scene-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f7f8fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .sc-scene-card-id {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .sc-scene-card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sc-scene-card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sc-scene-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sc-scene-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .sc-scene-value {
+    font-size: 14px;
+    color: #1a1a1a;
+    line-height: 1.4;
+  }
+
+  .sc-scene-thumbnail {
+    margin-top: 8px;
+  }
+
+  .sc-thumbnail-mobile {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+}
