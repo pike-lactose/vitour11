@@ -186,7 +186,7 @@ const TourViewer = () => {
         const hotSpotsConfig = {};
         Object.keys(data.scenes).forEach(sceneName => {
           const scene = data.scenes[sceneName];
-          const fullPanoramaUrl = `http://localhost:5000${scene.panorama}`;
+          const fullPanoramaUrl = scene.panorama;
           if (scene.hotSpots && scene.hotSpots.length > 0) {
             scene.hotSpots = scene.hotSpots.map(hotspot => {
               const labelText = hotspot.text || hotspot.sceneName || 'Lokasi';

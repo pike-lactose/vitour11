@@ -101,7 +101,7 @@ const PanoramaEditor = () => {
       scenes: {
         [scene.name]: {
           type: 'equirectangular',
-          panorama: `http://localhost:5000/uploads/${scene.image_path}`,
+          panorama: `/uploads/${scene.image_path}`,
           hotSpots: hotspotsForViewer
         }
       }
