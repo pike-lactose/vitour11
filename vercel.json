@@ -5,13 +5,19 @@
       "framework": "create-react-app"
     },
     "backend": {
-      "root": "backend",
-      "entrypoint": "server.js"
+      "root": "backend"
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)?",
+      "source": "/api/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/uploads/(.*)",
       "destination": {
         "type": "service",
         "service": "backend"
