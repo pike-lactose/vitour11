@@ -1,0 +1,9 @@
+LOAD DATABASE
+    FROM mysql://vitour:mkiBHrjYAS0ul9LtN3Mr6Oq7@127.0.0.1:3306/vitour
+    INTO postgresql://postgres.tethialldcswxqwsasjm:w1dmJAFyfJCeVhoy@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+
+WITH
+    include drop,
+    create tables,
+    create indexes,
+    reset sequences;
