@@ -65,7 +65,7 @@ const PanoramaEditor = () => {
   };
 
   const loadScene = async (sceneId) => {
-    const scene = scenes.find(s => s.id === parseInt(sceneId));
+    const scene = scenes.find(s => Number(s.id) === Number(sceneId));
     if (!scene) return;
 
     if (!window.pannellum) {
@@ -274,7 +274,7 @@ const PanoramaEditor = () => {
         >
           <option value="">Pilih scene tujuan</option>
           {scenes
-            .filter(s => s.id !== parseInt(selectedScene))
+            .filter(s => Number(s.id) !== Number(selectedScene))
             .map((scene) => (
               <option key={scene.id} value={scene.id}>{scene.name}</option>
             ))}

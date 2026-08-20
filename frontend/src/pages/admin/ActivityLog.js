@@ -10,7 +10,7 @@ const ActivityLog = () => {
   const fetchLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/activity-log', {
+      const res = await fetch('/api/activity-log', {
         credentials: 'include'
       });
       if (res.ok) {

@@ -1,0 +1,21 @@
+{
+  "files": {
+    "main.css": "/static/css/main.2918d109.css",
+    "main.js": "/static/js/main.e14ebb03.js",
+    "static/media/upacara.jpeg": "/static/media/upacara.93396e99cba526ed8be7.jpeg",
+    "static/media/kumpul.jpeg": "/static/media/kumpul.94f2772e8385f4faab80.jpeg",
+    "static/media/hujan.jpeg": "/static/media/hujan.e7ee2dd17aa653f03504.jpeg",
+    "static/media/sekolah.jpeg": "/static/media/sekolah.276f87825d861ce0bcb8.jpeg",
+    "static/media/tanaman.png": "/static/media/tanaman.6a1d96744d3e0d86eb55.png",
+    "static/media/alfa.png": "/static/media/alfa.3f494cff635e844ecf6b.png",
+    "static/media/ramadhan.png": "/static/media/ramadhan.b0aeb9ea19c722a67021.png",
+    "static/media/kepala_sekolah.jpg": "/static/media/kepala_sekolah.1509a48375f3835a6404.jpg",
+    "index.html": "/index.html",
+    "main.2918d109.css.map": "/static/css/main.2918d109.css.map",
+    "main.e14ebb03.js.map": "/static/js/main.e14ebb03.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.2918d109.css",
+    "static/js/main.e14ebb03.js"
+  ]
+}

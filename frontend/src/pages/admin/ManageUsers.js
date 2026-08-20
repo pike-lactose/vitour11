@@ -17,7 +17,7 @@ const ManageUsers = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch('/api/users', {
         credentials: 'include'
       });
       if (res.ok) {
@@ -46,7 +46,7 @@ const ManageUsers = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -77,7 +77,7 @@ const ManageUsers = () => {
     if (!window.confirm(`Hapus user "${username}"?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const res = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         credentials: 'include'
       });

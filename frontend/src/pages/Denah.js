@@ -76,7 +76,7 @@ const Denah = () => {
           <div className="denah-floorplan-container">
             <div className="denah-floorplan-wrapper">
               <img
-                src={`http://localhost:5000/uploads/${floorPlan.image_path}`}
+                src={`/uploads/${floorPlan.image_path}`}
                 alt="Denah Sekolah"
                 className="denah-floorplan-img"
               />
@@ -127,7 +127,7 @@ const Denah = () => {
                 >
                   <div className="denah-card-img-wrap">
                     <img
-                      src={`http://localhost:5000/uploads/${d.image_path}`}
+                      src={`/uploads/${d.image_path}`}
                       alt={d.name}
                       className="denah-card-img"
                     />
@@ -175,7 +175,7 @@ const Denah = () => {
               </button>
               <div className="denah-modal-img-wrap">
                 <img
-                  src={`http://localhost:5000/uploads/${selectedDenah.image_path}`}
+                  src={`/uploads/${selectedDenah.image_path}`}
                   alt={selectedDenah.name}
                   className="denah-modal-img"
                 />

@@ -320,7 +320,7 @@ const DenahManager = () => {
             {floorPlan ? (
               <div className="dm-fp-preview">
                 <img
-                  src={`http://localhost:5000/uploads/${floorPlan.image_path}`}
+                  src={`/uploads/${floorPlan.image_path}`}
                   alt="Denah Utama"
                   className="dm-fp-img"
                 />
@@ -384,7 +384,7 @@ const DenahManager = () => {
                 onClick={handleFloorplanClick}
               >
                 <img
-                  src={`http://localhost:5000/uploads/${floorPlan.image_path}`}
+                  src={`/uploads/${floorPlan.image_path}`}
                   alt="Denah Utama"
                   className="dm-fp-editor-img"
                 />
@@ -510,7 +510,7 @@ const DenahManager = () => {
                   <div key={d.id} className="dm-denah-item">
                     <div className="dm-denah-item-img-wrap">
                       <img
-                        src={`http://localhost:5000/uploads/${d.image_path}`}
+                        src={`/uploads/${d.image_path}`}
                         alt={d.name}
                         className="dm-denah-item-img"
                       />

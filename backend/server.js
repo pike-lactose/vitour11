@@ -5,10 +5,26 @@ const { Pool } = require('pg');               // ← replaced mysql2 with pg
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const crypto = require('crypto');
+const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
 
 require('dotenv').config();
+
+const isStorageConfigured = () =>
+  Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+let _supabaseStorage = null;
+function getSupabaseStorage() {
+  if (!_supabaseStorage && isStorageConfigured()) {
+    _supabaseStorage = createSupabaseClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabaseStorage;
+}
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'vitour';
 
 // PostgreSQL connection pool using Supabase Session Pooler
 const dbPool = new Pool({
@@ -25,28 +41,23 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/:filename', (req, res, next) => {
+  if (!isStorageConfigured()) return next();
+  const { filename } = req.params;
+  if (/(^|\/)\.\.|\.\.(\/|$)/.test(filename)) return res.status(400).json({ error: 'Invalid filename' });
+  res.redirect(302, storagePublicUrl(encodeURIComponent(filename)));
+});
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'vitour-secret-key-2024-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000
-  }
+app.use(cookieSession({
+  name: 'session',
+  keys: [process.env.SESSION_SECRET || 'vitour-secret-key-2024-change-in-production'],
+  maxAge: 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production'
 }));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -61,6 +72,39 @@ const upload = multer({
     cb(new Error('Only image files are allowed!'));
   }
 });
+
+function generateFilename(file) {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  return uniqueSuffix + path.extname(file.originalname);
+}
+
+function storagePublicUrl(filename) {
+  return `${process.env.SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filename}`;
+}
+
+async function uploadToStorage(filename, buffer, contentType) {
+  if (!isStorageConfigured()) {
+    // Fallback: write to local disk so local dev still works without storage keys
+    const dest = path.join(__dirname, 'uploads', filename);
+    fs.writeFileSync(dest, buffer);
+    return;
+  }
+  const { error } = await getSupabaseStorage().storage
+    .from(STORAGE_BUCKET)
+    .upload(filename, buffer, { contentType, upsert: true });
+  if (error) throw error;
+}
+
+async function deleteFromStorage(filename) {
+  if (!filename) return;
+  if (!isStorageConfigured()) {
+    const dest = path.join(__dirname, 'uploads', filename);
+    if (fs.existsSync(dest)) fs.unlinkSync(dest);
+    return;
+  }
+  const { error } = await getSupabaseStorage().storage.from(STORAGE_BUCKET).remove([filename]);
+  if (error) console.warn('Storage delete warning:', error.message);
+}
 
 // ------------------ Database Initialization (PostgreSQL) ------------------
 async function initDatabase() {
@@ -250,7 +294,8 @@ app.post('/api/scenes', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'Scene name is required' });
     }
 
-    const imagePath = req.file.filename;
+    const imagePath = generateFilename(req.file);
+    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
     const { rows } = await dbPool.query(
       `INSERT INTO vitour.scenes (name, image_path, description, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id`,
@@ -300,10 +345,7 @@ app.delete('/api/scenes/:id', async (req, res) => {
 
     const { rows: sceneRows } = await dbPool.query('SELECT image_path FROM vitour.scenes WHERE id = $1', [id]);
     if (sceneRows.length > 0) {
-      const imagePath = path.join(__dirname, 'uploads', sceneRows[0].image_path);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      await deleteFromStorage(sceneRows[0].image_path);
     }
 
     await dbPool.query('DELETE FROM vitour.hotspots WHERE scene_id = $1 OR target_scene_id = $1', [id]);
@@ -424,7 +466,8 @@ app.post('/api/denah', upload.single('image'), async (req, res) => {
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Denah name is required' });
 
-    const imagePath = req.file.filename;
+    const imagePath = generateFilename(req.file);
+    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
     const { rows } = await dbPool.query(
       `INSERT INTO vitour.denah (name, image_path, description, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id`,
@@ -445,12 +488,13 @@ app.put('/api/denah/:id', upload.single('image'), async (req, res) => {
     if (req.file) {
       const { rows: existing } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
       if (existing.length > 0) {
-        const oldPath = path.join(__dirname, 'uploads', existing[0].image_path);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        await deleteFromStorage(existing[0].image_path);
       }
+      const newImagePath = generateFilename(req.file);
+      await uploadToStorage(newImagePath, req.file.buffer, req.file.mimetype);
       await dbPool.query(
         `UPDATE vitour.denah SET name = $1, description = $2, image_path = $3, updated_by = $4, updated_at = NOW() WHERE id = $5`,
-        [name || '', description || '', req.file.filename, req.session?.userId || null, id]
+        [name || '', description || '', newImagePath, req.session?.userId || null, id]
       );
     } else {
       await dbPool.query(
@@ -470,8 +514,7 @@ app.delete('/api/denah/:id', async (req, res) => {
     const { id } = req.params;
     const { rows } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
     if (rows.length > 0) {
-      const imgPath = path.join(__dirname, 'uploads', rows[0].image_path);
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      await deleteFromStorage(rows[0].image_path);
     }
     await dbPool.query('DELETE FROM vitour.denah_spheres WHERE denah_id = $1 OR target_denah_id = $1', [id]);
     await dbPool.query('DELETE FROM vitour.denah WHERE id = $1', [id]);
@@ -498,21 +541,23 @@ app.post('/api/floorplan', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
+    const imagePath = generateFilename(req.file);
+    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+
     const { rows: existing } = await dbPool.query('SELECT * FROM vitour.floor_plan ORDER BY id DESC LIMIT 1');
     if (existing.length > 0) {
-      const oldPath = path.join(__dirname, 'uploads', existing[0].image_path);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      await deleteFromStorage(existing[0].image_path);
       await dbPool.query(
         `UPDATE vitour.floor_plan SET image_path = $1, updated_by = $2, updated_at = NOW() WHERE id = $3`,
-        [req.file.filename, req.session?.userId || null, existing[0].id]
+        [imagePath, req.session?.userId || null, existing[0].id]
       );
     } else {
       await dbPool.query(
         `INSERT INTO vitour.floor_plan (image_path, updated_by) VALUES ($1, $2)`,
-        [req.file.filename, req.session?.userId || null]
+        [imagePath, req.session?.userId || null]
       );
     }
-    res.json({ image_path: req.file.filename });
+    res.json({ image_path: imagePath });
   } catch (error) {
     console.error('Error saving floor plan:', error);
     res.status(500).json({ error: 'Failed to save floor plan' });
@@ -621,11 +666,9 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ error: 'Logout failed' });
-    res.clearCookie('connect.sid');
-    res.json({ message: 'Logout successful' });
-  });
+  req.session = null;
+  res.clearCookie('session');
+  res.json({ message: 'Logout successful' });
 });
 
 app.get('/api/auth/check', (req, res) => {

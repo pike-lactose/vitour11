@@ -217,7 +217,7 @@ const SceneManager = () => {
           </td>
           <td>
             <img
-              src={`http://localhost:5000/uploads/${scene.image_path}`}
+              src={`/uploads/${scene.image_path}`}
               alt={scene.name}
               className="sc-thumbnail"
             />
@@ -231,7 +231,7 @@ const SceneManager = () => {
         <td className="sc-desc-cell">{scene.description || '-'}</td>
         <td>
           <img
-            src={`http://localhost:5000/uploads/${scene.image_path}`}
+            src={`/uploads/${scene.image_path}`}
             alt={scene.name}
             className="sc-thumbnail"
           />
@@ -412,7 +412,7 @@ const SceneManager = () => {
                         )}
                         <div className="sc-scene-thumbnail">
                           <img
-                            src={`http://localhost:5000/uploads/${scene.image_path}`}
+                            src={`/uploads/${scene.image_path}`}
                             alt={scene.name}
                             className="sc-thumbnail-mobile"
                           />
