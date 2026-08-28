@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, ArrowLeft } from 'lucide-react';
+import { X, MapPin, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Denah.css';
 
@@ -11,6 +11,9 @@ const Denah = () => {
   const [selectedDenah, setSelectedDenah] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hoveredSphere, setHoveredSphere] = useState(null);
+  const [denahPhotos, setDenahPhotos] = useState({});
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,12 +43,45 @@ const Denah = () => {
   const handleSphereClick = (sphere) => {
     if (sphere.target_denah_id) {
       const target = denahList.find(d => d.id === sphere.target_denah_id);
-      if (target) setSelectedDenah(target);
+      if (target) openDenah(target);
     }
   };
 
   const handleDenahCardClick = (denah) => {
+    openDenah(denah);
+  };
+
+  const openDenah = async (denah) => {
     setSelectedDenah(denah);
+    setActivePhotoIndex(0);
+    setSlideDirection(1);
+    if (!denahPhotos[denah.id]) {
+      try {
+        const res = await fetch(`/api/denah/${denah.id}/photos`);
+        if (res.ok) {
+          const data = await res.json();
+          setDenahPhotos(prev => ({ ...prev, [denah.id]: data }));
+        }
+      } catch (error) {
+        console.error('Error fetching denah photos:', error);
+      }
+    }
+  };
+
+  const photosFor = (denah) => {
+    const cached = denahPhotos[denah.id];
+    if (cached && cached.length > 0) return cached;
+    return [{ id: 0, image_path: denah.image_path, is_cover: true }];
+  };
+
+  const handleNextPhoto = () => {
+    setSlideDirection(1);
+    setActivePhotoIndex(prev => (prev + 1) % photosFor(selectedDenah).length);
+  };
+
+  const handlePrevPhoto = () => {
+    setSlideDirection(-1);
+    setActivePhotoIndex(prev => (prev - 1 + photosFor(selectedDenah).length) % photosFor(selectedDenah).length);
   };
 
   if (loading) {
@@ -55,6 +91,9 @@ const Denah = () => {
       </div>
     );
   }
+
+  const selectedPhotos = selectedDenah ? photosFor(selectedDenah) : [];
+  const hasMultiple = selectedPhotos.length > 1;
 
   return (
     <div className="denah-page">
@@ -174,11 +213,41 @@ const Denah = () => {
                 <X size={20} />
               </button>
               <div className="denah-modal-img-wrap">
-                <img
-                  src={`/uploads/${selectedDenah.image_path}`}
-                  alt={selectedDenah.name}
-                  className="denah-modal-img"
-                />
+                <AnimatePresence mode="wait" custom={slideDirection}>
+                  <motion.img
+                    key={selectedPhotos[activePhotoIndex]?.image_path || selectedDenah.image_path}
+                    src={`/uploads/${(selectedPhotos[activePhotoIndex] || selectedDenah).image_path}`}
+                    alt={selectedDenah.name}
+                    className="denah-modal-img"
+                    custom={slideDirection}
+                    initial={{ opacity: 0, rotateY: slideDirection > 0 ? -90 : 90 }}
+                    animate={{ opacity: 1, rotateY: 0 }}
+                    exit={{ opacity: 0, rotateY: slideDirection > 0 ? 90 : -90 }}
+                    transition={{ duration: 0.5 }}
+                    style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+                  />
+                </AnimatePresence>
+                {hasMultiple && (
+                  <>
+                    <button
+                      className="denah-modal-arrow denah-modal-arrow-left"
+                      onClick={handlePrevPhoto}
+                      aria-label="Foto sebelumnya"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button
+                      className="denah-modal-arrow denah-modal-arrow-right"
+                      onClick={handleNextPhoto}
+                      aria-label="Foto berikutnya"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                    <div className="denah-modal-counter">
+                      {activePhotoIndex + 1} / {selectedPhotos.length}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="denah-modal-info">
                 <h2 className="denah-modal-name">{selectedDenah.name}</h2>

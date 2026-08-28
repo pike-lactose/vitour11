@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Save, X, Edit2, Trash2, ImagePlus, Loader2, MapPin } from 'lucide-react';
+import { Upload, Save, X, Edit2, Trash2, ImagePlus, Loader2, MapPin, Images, ChevronUp, ChevronDown } from 'lucide-react';
 import './DenahManager.css';
 
 const useMobileDetect = () => {
@@ -38,6 +38,11 @@ const DenahManager = () => {
   const [pendingSpherePos, setPendingSpherePos] = useState(null);
   const [editingSphereId, setEditingSphereId] = useState(null);
   const [editSphereForm, setEditSphereForm] = useState({ text: '', target_denah_id: '' });
+
+  const [photoManagerDenahId, setPhotoManagerDenahId] = useState(null);
+  const [denahPhotos, setDenahPhotos] = useState([]);
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -223,6 +228,90 @@ const DenahManager = () => {
         showMessage('success', 'Sphere berhasil diperbarui');
         setEditingSphereId(null);
         fetchData();
+      }
+    } catch (error) {
+      showMessage('error', 'Terjadi kesalahan');
+    }
+  };
+
+  const fetchDenahPhotos = async (denahId) => {
+    try {
+      const res = await fetch(`/api/denah/${denahId}/photos`);
+      if (res.ok) {
+        const data = await res.json();
+        setDenahPhotos(data);
+      }
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+    }
+  };
+
+  const handleTogglePhotoManager = (denahId) => {
+    if (photoManagerDenahId === denahId) {
+      setPhotoManagerDenahId(null);
+      setDenahPhotos([]);
+      setPhotoFiles([]);
+    } else {
+      setPhotoManagerDenahId(denahId);
+      setPhotoFiles([]);
+      fetchDenahPhotos(denahId);
+    }
+  };
+
+  const handlePhotoUpload = async (denahId) => {
+    if (!photoFiles.length) {
+      showMessage('error', 'Pilih setidaknya satu foto');
+      return;
+    }
+    setUploadingPhotos(true);
+    const formData = new FormData();
+    for (const file of photoFiles) {
+      formData.append('images', file);
+    }
+    try {
+      const res = await fetch(`/api/denah/${denahId}/photos`, { method: 'POST', body: formData });
+      if (res.ok) {
+        showMessage('success', 'Foto berhasil ditambahkan');
+        setPhotoFiles([]);
+        fetchDenahPhotos(denahId);
+      } else {
+        showMessage('error', 'Gagal mengunggah foto');
+      }
+    } catch (error) {
+      showMessage('error', 'Terjadi kesalahan');
+    }
+    setUploadingPhotos(false);
+  };
+
+  const handlePhotoDelete = async (photoId) => {
+    if (!window.confirm('Yakin ingin menghapus foto ini?')) return;
+    try {
+      const res = await fetch(`/api/denah/photos/${photoId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showMessage('success', 'Foto berhasil dihapus');
+        fetchDenahPhotos(photoManagerDenahId);
+      } else {
+        showMessage('error', 'Gagal menghapus foto');
+      }
+    } catch (error) {
+      showMessage('error', 'Terjadi kesalahan');
+    }
+  };
+
+  const handleMovePhoto = async (index, direction) => {
+    const newIndex = index + direction;
+    const photoRows = denahPhotos.filter(p => !p.is_cover);
+    if (index < 0 || index >= photoRows.length || newIndex < 0 || newIndex >= photoRows.length) return;
+    const reordered = [...photoRows];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    try {
+      const res = await fetch('/api/denah/photos/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: reordered.map((p, i) => ({ id: p.id, sort_order: i })) })
+      });
+      if (res.ok) {
+        fetchDenahPhotos(photoManagerDenahId);
       }
     } catch (error) {
       showMessage('error', 'Terjadi kesalahan');
@@ -560,6 +649,14 @@ const DenahManager = () => {
                       ) : (
                         <>
                           <motion.button
+                            className={`dm-btn dm-btn-sm dm-btn-photos ${photoManagerDenahId === d.id ? 'dm-btn-photos-active' : ''}`}
+                            onClick={() => handleTogglePhotoManager(d.id)}
+                            whileTap={{ scale: 0.95 }}
+                            title="Kelola Foto"
+                          >
+                            <Images size={14} />
+                          </motion.button>
+                          <motion.button
                             className="dm-btn dm-btn-sm dm-btn-edit"
                             onClick={() => handleDenahEdit(d)}
                             whileTap={{ scale: 0.95 }}
@@ -576,6 +673,76 @@ const DenahManager = () => {
                         </>
                       )}
                     </div>
+                    {photoManagerDenahId === d.id && !editingDenahId && (
+                      <motion.div
+                        className="dm-photo-manager"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                      >
+                        <div className="dm-photo-grid">
+                          {denahPhotos.map((photo) => (
+                            <div key={photo.id} className="dm-photo-thumb">
+                              <img
+                                src={`/uploads/${photo.image_path}`}
+                                alt="Foto"
+                                className="dm-photo-thumb-img"
+                              />
+                              {photo.is_cover ? (
+                                <span className="dm-photo-cover-badge">Sampul</span>
+                              ) : (
+                                <>
+                                  <button
+                                    className="dm-photo-delete"
+                                    onClick={() => handlePhotoDelete(photo.id)}
+                                    title="Hapus"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                  <div className="dm-photo-move">
+                                    <button
+                                      className="dm-photo-move-btn"
+                                      onClick={() => handleMovePhoto(denahPhotos.filter(p => !p.is_cover).findIndex(p => p.id === photo.id), -1)}
+                                      title="Pindah ke depan"
+                                    >
+                                      <ChevronUp size={12} />
+                                    </button>
+                                    <button
+                                      className="dm-photo-move-btn"
+                                      onClick={() => handleMovePhoto(denahPhotos.filter(p => !p.is_cover).findIndex(p => p.id === photo.id), 1)}
+                                      title="Pindah ke belakang"
+                                    >
+                                      <ChevronDown size={12} />
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="dm-photo-upload">
+                          <div className="dm-file-input">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp"
+                              multiple
+                              onChange={(e) => setPhotoFiles(Array.from(e.target.files))}
+                            />
+                            {photoFiles.length > 0 && (
+                              <span className="dm-file-name">{photoFiles.length} foto dipilih</span>
+                            )}
+                          </div>
+                          <motion.button
+                            className="dm-btn dm-btn-sm dm-btn-photos-upload"
+                            onClick={() => handlePhotoUpload(d.id)}
+                            whileTap={{ scale: 0.95 }}
+                            disabled={uploadingPhotos || photoFiles.length === 0}
+                          >
+                            {uploadingPhotos ? <Loader2 className="dm-btn-icon-spin" size={14} /> : <Upload size={14} />}
+                            {uploadingPhotos ? 'Mengunggah...' : 'Tambah Foto'}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -188,6 +188,16 @@ async function initDatabase() {
     )
   `);
 
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS vitour.denah_photos (
+      id SERIAL PRIMARY KEY,
+      denah_id INT NOT NULL REFERENCES vitour.denah(id) ON DELETE CASCADE,
+      image_path VARCHAR(500) NOT NULL,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Add any missing columns (equivalent to your previous ALTER attempts)
   try {
     await dbPool.query('ALTER TABLE vitour.scenes ADD COLUMN IF NOT EXISTS created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL');
@@ -516,6 +526,11 @@ app.delete('/api/denah/:id', async (req, res) => {
     if (rows.length > 0) {
       await deleteFromStorage(rows[0].image_path);
     }
+    const { rows: photos } = await dbPool.query('SELECT image_path FROM vitour.denah_photos WHERE denah_id = $1', [id]);
+    for (const photo of photos) {
+      await deleteFromStorage(photo.image_path);
+    }
+    await dbPool.query('DELETE FROM vitour.denah_photos WHERE denah_id = $1', [id]);
     await dbPool.query('DELETE FROM vitour.denah_spheres WHERE denah_id = $1 OR target_denah_id = $1', [id]);
     await dbPool.query('DELETE FROM vitour.denah WHERE id = $1', [id]);
     res.json({ message: 'Denah deleted successfully' });
@@ -625,6 +640,98 @@ app.delete('/api/denah-spheres/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting denah sphere:', error);
     res.status(500).json({ error: 'Failed to delete denah sphere' });
+  }
+});
+
+// ---------- DENAH PHOTOS ----------
+app.get('/api/denah/:id/photos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows: denah } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
+    if (denah.length === 0) return res.status(404).json({ error: 'Denah not found' });
+
+    const { rows: photos } = await dbPool.query(
+      'SELECT * FROM vitour.denah_photos WHERE denah_id = $1 ORDER BY sort_order, id',
+      [id]
+    );
+
+    const allPhotos = [
+      { id: 0, image_path: denah[0].image_path, sort_order: -1, is_cover: true },
+      ...photos.map(p => ({ ...p, is_cover: false }))
+    ];
+    res.json(allPhotos);
+  } catch (error) {
+    console.error('Error fetching denah photos:', error);
+    res.status(500).json({ error: 'Failed to fetch denah photos' });
+  }
+});
+
+app.post('/api/denah/:id/photos', upload.array('images', 20), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No images uploaded' });
+    }
+
+    const { rows: existing } = await dbPool.query('SELECT id FROM vitour.denah WHERE id = $1', [id]);
+    if (existing.length === 0) return res.status(404).json({ error: 'Denah not found' });
+
+    const { rows: lastPhoto } = await dbPool.query(
+      'SELECT MAX(sort_order) as max_order FROM vitour.denah_photos WHERE denah_id = $1',
+      [id]
+    );
+    let nextOrder = (lastPhoto[0].max_order || 0) + 1;
+
+    const inserted = [];
+    for (const file of req.files) {
+      const imagePath = generateFilename(file);
+      await uploadToStorage(imagePath, file.buffer, file.mimetype);
+      const { rows } = await dbPool.query(
+        `INSERT INTO vitour.denah_photos (denah_id, image_path, sort_order, created_at)
+         VALUES ($1, $2, $3, NOW()) RETURNING id`,
+        [id, imagePath, nextOrder++]
+      );
+      inserted.push({ id: rows[0].id, image_path: imagePath });
+    }
+
+    res.json({ message: `${inserted.length} photo(s) uploaded`, photos: inserted });
+  } catch (error) {
+    console.error('Error uploading denah photos:', error);
+    res.status(500).json({ error: 'Failed to upload photos' });
+  }
+});
+
+app.put('/api/denah/photos/reorder', async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ error: 'items array is required' });
+    }
+    for (const item of items) {
+      await dbPool.query(
+        'UPDATE vitour.denah_photos SET sort_order = $1 WHERE id = $2',
+        [item.sort_order, item.id]
+      );
+    }
+    res.json({ message: 'Photos reordered successfully' });
+  } catch (error) {
+    console.error('Error reordering photos:', error);
+    res.status(500).json({ error: 'Failed to reorder photos' });
+  }
+});
+
+app.delete('/api/denah/photos/:photoId', async (req, res) => {
+  try {
+    const { photoId } = req.params;
+    const { rows } = await dbPool.query('SELECT image_path FROM vitour.denah_photos WHERE id = $1', [photoId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Photo not found' });
+
+    await deleteFromStorage(rows[0].image_path);
+    await dbPool.query('DELETE FROM vitour.denah_photos WHERE id = $1', [photoId]);
+    res.json({ message: 'Photo deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting denah photo:', error);
+    res.status(500).json({ error: 'Failed to delete photo' });
   }
 });
 
