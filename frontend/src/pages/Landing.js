@@ -172,67 +172,6 @@ const Landing = () => {
         <HeroCard isMobile={isMobile} />
       </ParallaxHero>
 
-      <section className="section school-history">
-        <div className="container">
-          <h2>Sejarah Sekolah</h2>
-          <div className="history-content">
-            <div className="history-text">
-              <p>
-                Didirikan pada tahun 1985, sekolah kami telah menjadi lembaga pendidikan
-                terkemuka di wilayah ini selama lebih dari tiga dekade. Kami berkomitmen
-                untuk memberikan pendidikan berkualitas tinggi yang membentuk karakter
-                dan masa depan siswa-siswi kami.
-              </p>
-              <p>
-                Dengan filosofi pendidikan yang berpusat pada siswa, kami terus innovate
-                dan mengembangkan program pembelajaran yang relevan dengan kebutuhan
-                zaman modern sambil tetap mempertahankan nilai-nilai tradisional yang
-                menjadi fondasi kuat kami.
-              </p>
-              <p>
-                Saat ini, sekolah kami telah meluluskan ribuan alumni yang tersebar
-                di berbagai bidang profesi dan terus memberikan kontribusi positif
-                bagi masyarakat.
-              </p>
-            </div>
-            <div className="history-image">
-              <InteractivePhotoStack />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section school-gallery">
-        <div className="container">
-          <h2>Galeri Sekolah</h2>
-          <ScrollRevealGallery />
-        </div>
-      </section>
-
-      <section className="section principal-section">
-        <div className="container">
-          <h2>Kepala Sekolah</h2>
-          <div className="principal-content">
-            <div className="principal-image">
-              <img src={kepalaSekolah} alt="Kepala Sekolah" className="principal-img" />
-            </div>
-            <div className="principal-info">
-              <h3>Eka Rachman, S.Kom., M.M.Pd</h3>
-              <p className='principal-id'>NIP: 197704102011011001</p>
-              <p className="principal-title">Kepala Sekolah periode 2020 - 2024</p>
-              <p className="principal-bio">
-                Dengan pengalaman lebih dari 20 tahun di bidang pendidikan,
-                Dr. Ahmad Wijaya telah memimpin sekolah kami dengan visi
-                untuk menciptakan lingkungan belajar yang inovatif dan
-                inklusif. Menyelesaikan pendidikan S3 di Universitas
-                Negeri Jakarta,Beliau fokus pada pengembangan teknologi
-                pendidikan dan penguatan karakter siswa.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <footer id="tour-section" className="footer-section">
         <div className="footer-content">
           <div className="footer-left">
