@@ -171,7 +171,7 @@ const Landing = () => {
       <ParallaxHero>
         <HeroCard isMobile={isMobile} />
       </ParallaxHero>
-
+      
       <footer id="tour-section" className="footer-section">
         <div className="footer-content">
           <div className="footer-left">

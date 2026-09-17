@@ -97,13 +97,18 @@ async function uploadToStorage(filename, buffer, contentType) {
 
 async function deleteFromStorage(filename) {
   if (!filename) return;
-  if (!isStorageConfigured()) {
-    const dest = path.join(__dirname, 'uploads', filename);
-    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-    return;
+  try {
+    if (!isStorageConfigured()) {
+      const dest = path.join(__dirname, 'uploads', filename);
+      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      return;
+    }
+    const { error } = await getSupabaseStorage().storage.from(STORAGE_BUCKET).remove([filename]);
+    if (error) console.warn('Storage delete warning:', error.message);
+  } catch (err) {
+    // Never let a file/storage failure block the database delete.
+    console.warn('deleteFromStorage error (continuing):', err.message);
   }
-  const { error } = await getSupabaseStorage().storage.from(STORAGE_BUCKET).remove([filename]);
-  if (error) console.warn('Storage delete warning:', error.message);
 }
 
 // ------------------ Database Initialization (PostgreSQL) ------------------
@@ -364,7 +369,7 @@ app.delete('/api/scenes/:id', async (req, res) => {
     res.json({ message: 'Scene deleted successfully' });
   } catch (error) {
     console.error('Error deleting scene:', error);
-    res.status(500).json({ error: 'Failed to delete scene' });
+    res.status(500).json({ error: 'Failed to delete scene: ' + error.message });
   }
 });
 
@@ -536,7 +541,7 @@ app.delete('/api/denah/:id', async (req, res) => {
     res.json({ message: 'Denah deleted successfully' });
   } catch (error) {
     console.error('Error deleting denah:', error);
-    res.status(500).json({ error: 'Failed to delete denah' });
+    res.status(500).json({ error: 'Failed to delete denah: ' + error.message });
   }
 });
 
