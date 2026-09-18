@@ -4,6 +4,7 @@ const multer = require('multer');
 const { Pool } = require('pg');               // ← replaced mysql2 with pg
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
 const crypto = require('crypto');
@@ -41,6 +42,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(os.tmpdir(), 'vitour-uploads')));
 app.use('/uploads/:filename', (req, res, next) => {
   if (!isStorageConfigured()) return next();
   const { filename } = req.params;
@@ -82,29 +84,73 @@ function storagePublicUrl(filename) {
   return `${process.env.SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filename}`;
 }
 
+// Candidate directories that may hold uploaded files. The primary dir works for
+// local dev and for images bundled into the deploy; the temp dir provides a
+// writable location on serverless hosts (e.g. Vercel) where the app dir is
+// read-only.
+function uploadDirs() {
+  return [path.join(__dirname, 'uploads'), path.join(os.tmpdir(), 'vitour-uploads')];
+}
+
+function writeUploadToDisk(filename, buffer) {
+  const errors = [];
+  for (const dir of uploadDirs()) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, filename), buffer);
+      return;
+    } catch (err) {
+      errors.push(`${dir}: ${err.message}`);
+    }
+  }
+  throw new Error('Failed to write upload to disk: ' + errors.join(' | '));
+}
+
+function removeUploadFromDisk(filename) {
+  for (const dir of uploadDirs()) {
+    const dest = path.join(dir, filename);
+    if (fs.existsSync(dest)) {
+      try {
+        fs.unlinkSync(dest);
+      } catch (err) {
+        console.warn('Local unlink warning:', err.message);
+      }
+    }
+  }
+}
+
 async function uploadToStorage(filename, buffer, contentType) {
   if (!isStorageConfigured()) {
-    // Fallback: write to local disk so local dev still works without storage keys
-    const dest = path.join(__dirname, 'uploads', filename);
-    fs.writeFileSync(dest, buffer);
+    // Fallback: write to disk so local dev and serverless deploys without
+    // storage keys still work.
+    writeUploadToDisk(filename, buffer);
     return;
   }
-  const { error } = await getSupabaseStorage().storage
-    .from(STORAGE_BUCKET)
-    .upload(filename, buffer, { contentType, upsert: true });
-  if (error) throw error;
+  try {
+    const { error } = await getSupabaseStorage().storage
+      .from(STORAGE_BUCKET)
+      .upload(filename, buffer, { contentType, upsert: true });
+    if (error) {
+      console.warn('Storage upload warning, falling back to disk:', error.message);
+      writeUploadToDisk(filename, buffer);
+    }
+  } catch (err) {
+    console.warn('Storage upload error, falling back to disk:', err.message);
+    writeUploadToDisk(filename, buffer);
+  }
 }
 
 async function deleteFromStorage(filename) {
   if (!filename) return;
   try {
     if (!isStorageConfigured()) {
-      const dest = path.join(__dirname, 'uploads', filename);
-      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      removeUploadFromDisk(filename);
       return;
     }
     const { error } = await getSupabaseStorage().storage.from(STORAGE_BUCKET).remove([filename]);
     if (error) console.warn('Storage delete warning:', error.message);
+    // Remove any local copies too (best effort).
+    removeUploadFromDisk(filename);
   } catch (err) {
     // Never let a file/storage failure block the database delete.
     console.warn('deleteFromStorage error (continuing):', err.message);
