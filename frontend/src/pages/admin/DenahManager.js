@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Save, X, Edit2, Trash2, ImagePlus, Loader2, MapPin, Images, ChevronUp, ChevronDown } from 'lucide-react';
+import { isDirectUploadConfigured, uploadImage, readJson } from '../../lib/storage';
 import './DenahManager.css';
 
 const useMobileDetect = () => {
@@ -78,12 +79,22 @@ const DenahManager = () => {
       return;
     }
     setUploading(true);
-    const formData = new FormData();
-    formData.append('name', denahName);
-    formData.append('description', denahDesc);
-    formData.append('image', denahImage);
     try {
-      const res = await fetch('/api/denah', { method: 'POST', body: formData });
+      let res;
+      if (isDirectUploadConfigured()) {
+        const imagePath = await uploadImage(denahImage);
+        res = await fetch('/api/denah', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: denahName, description: denahDesc, imagePath })
+        });
+      } else {
+        const formData = new FormData();
+        formData.append('name', denahName);
+        formData.append('description', denahDesc);
+        formData.append('image', denahImage);
+        res = await fetch('/api/denah', { method: 'POST', body: formData });
+      }
       if (res.ok) {
         showMessage('success', 'Denah berhasil ditambahkan');
         setDenahName('');
@@ -92,11 +103,11 @@ const DenahManager = () => {
         document.getElementById('denah-image').value = '';
         fetchData();
       } else {
-        const err = await res.json();
+        const err = await readJson(res);
         showMessage('error', err.error || 'Gagal mengunggah');
       }
     } catch (error) {
-      showMessage('error', 'Terjadi kesalahan');
+      showMessage('error', error.message || 'Terjadi kesalahan');
     }
     setUploading(false);
   };
@@ -146,10 +157,20 @@ const DenahManager = () => {
       return;
     }
     setUploadingFp(true);
-    const formData = new FormData();
-    formData.append('image', fpImage);
     try {
-      const res = await fetch('/api/floorplan', { method: 'POST', body: formData });
+      let res;
+      if (isDirectUploadConfigured()) {
+        const imagePath = await uploadImage(fpImage);
+        res = await fetch('/api/floorplan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath })
+        });
+      } else {
+        const formData = new FormData();
+        formData.append('image', fpImage);
+        res = await fetch('/api/floorplan', { method: 'POST', body: formData });
+      }
       if (res.ok) {
         showMessage('success', 'Denah utama berhasil diunggah');
         setFpImage(null);
@@ -159,7 +180,7 @@ const DenahManager = () => {
         showMessage('error', 'Gagal mengunggah denah utama');
       }
     } catch (error) {
-      showMessage('error', 'Terjadi kesalahan');
+      showMessage('error', error.message || 'Terjadi kesalahan');
     }
     setUploadingFp(false);
   };
@@ -264,12 +285,25 @@ const DenahManager = () => {
       return;
     }
     setUploadingPhotos(true);
-    const formData = new FormData();
-    for (const file of photoFiles) {
-      formData.append('images', file);
-    }
     try {
-      const res = await fetch(`/api/denah/${denahId}/photos`, { method: 'POST', body: formData });
+      let res;
+      if (isDirectUploadConfigured()) {
+        const imagePaths = [];
+        for (const file of photoFiles) {
+          imagePaths.push(await uploadImage(file));
+        }
+        res = await fetch(`/api/denah/${denahId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePaths })
+        });
+      } else {
+        const formData = new FormData();
+        for (const file of photoFiles) {
+          formData.append('images', file);
+        }
+        res = await fetch(`/api/denah/${denahId}/photos`, { method: 'POST', body: formData });
+      }
       if (res.ok) {
         showMessage('success', 'Foto berhasil ditambahkan');
         setPhotoFiles([]);
@@ -278,7 +312,7 @@ const DenahManager = () => {
         showMessage('error', 'Gagal mengunggah foto');
       }
     } catch (error) {
-      showMessage('error', 'Terjadi kesalahan');
+      showMessage('error', error.message || 'Terjadi kesalahan');
     }
     setUploadingPhotos(false);
   };

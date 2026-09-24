@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, Save, X, Edit2, Trash2, ImagePlus, Loader2 } from 'lucide-react';
+import { isDirectUploadConfigured, uploadImage, readJson } from '../../lib/storage';
 import './SceneManager.css';
 
 const useMobileDetect = () => {
@@ -50,16 +51,28 @@ const SceneManager = () => {
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('description', description);
-    formData.append('image', image);
 
     try {
-      const response = await fetch('/api/scenes', {
-        method: 'POST',
-        body: formData
-      });
+      let response;
+      if (isDirectUploadConfigured()) {
+        const imagePath = await uploadImage(image);
+        response = await fetch('/api/scenes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description, imagePath })
+        });
+      } else {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('description', description);
+        formData.append('image', image);
+        response = await fetch('/api/scenes', {
+          method: 'POST',
+          body: formData
+        });
+      }
+
+      const data = await readJson(response);
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Scene berhasil ditambahkan' });
@@ -69,12 +82,11 @@ const SceneManager = () => {
         document.getElementById('scene-image').value = '';
         fetchScenes();
       } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Gagal mengunggah scene' });
+        setMessage({ type: 'error', text: data.error || 'Gagal mengunggah scene' });
       }
     } catch (error) {
       console.error('Error uploading scene:', error);
-      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mengunggah' });
+      setMessage({ type: 'error', text: error.message || 'Terjadi kesalahan saat mengunggah' });
     }
 
     setUploading(false);

@@ -159,12 +159,13 @@ async function deleteFromStorage(filename) {
 
 // ------------------ Database Initialization (PostgreSQL) ------------------
 async function initDatabase() {
-  // 1. Ensure vitour schema exists
-  await dbPool.query('CREATE SCHEMA IF NOT EXISTS vitour');
+  // 1. Tables are created in the public schema (Supabase default) to match the
+  //    seed SQL provided by the admin.
+  await dbPool.query('SET search_path TO public');
 
-  // 2. Create tables inside vitour schema (IF NOT EXISTS)
+  // 2. Create tables inside public schema (IF NOT EXISTS)
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.users (
+    CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(100) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
@@ -174,75 +175,75 @@ async function initDatabase() {
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.scenes (
+    CREATE TABLE IF NOT EXISTS scenes (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       image_path VARCHAR(500) NOT NULL,
       description TEXT,
-      created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
-      updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
+      created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      updated_by INT REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.hotspots (
+    CREATE TABLE IF NOT EXISTS hotspots (
       id SERIAL PRIMARY KEY,
-      scene_id INT NOT NULL REFERENCES vitour.scenes(id) ON DELETE CASCADE,
+      scene_id INT NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
       pitch FLOAT NOT NULL,
       yaw FLOAT NOT NULL,
       text VARCHAR(255),
       description TEXT,
-      target_scene_id INT REFERENCES vitour.scenes(id) ON DELETE SET NULL,
-      created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
-      updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
+      target_scene_id INT REFERENCES scenes(id) ON DELETE SET NULL,
+      created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      updated_by INT REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.denah (
+    CREATE TABLE IF NOT EXISTS denah (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       image_path VARCHAR(500) NOT NULL,
       description TEXT,
-      created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
-      updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
+      created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      updated_by INT REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.denah_spheres (
+    CREATE TABLE IF NOT EXISTS denah_spheres (
       id SERIAL PRIMARY KEY,
-      denah_id INT NOT NULL REFERENCES vitour.denah(id) ON DELETE CASCADE,
+      denah_id INT NOT NULL REFERENCES denah(id) ON DELETE CASCADE,
       x FLOAT NOT NULL,
       y FLOAT NOT NULL,
       text VARCHAR(255),
-      target_denah_id INT REFERENCES vitour.denah(id) ON DELETE SET NULL,
-      created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
-      updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
+      target_denah_id INT REFERENCES denah(id) ON DELETE SET NULL,
+      created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      updated_by INT REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.floor_plan (
+    CREATE TABLE IF NOT EXISTS floor_plan (
       id SERIAL PRIMARY KEY,
       image_path VARCHAR(500) NOT NULL,
-      updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL,
+      updated_by INT REFERENCES users(id) ON DELETE SET NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   await dbPool.query(`
-    CREATE TABLE IF NOT EXISTS vitour.denah_photos (
+    CREATE TABLE IF NOT EXISTS denah_photos (
       id SERIAL PRIMARY KEY,
-      denah_id INT NOT NULL REFERENCES vitour.denah(id) ON DELETE CASCADE,
+      denah_id INT NOT NULL REFERENCES denah(id) ON DELETE CASCADE,
       image_path VARCHAR(500) NOT NULL,
       sort_order INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -251,30 +252,30 @@ async function initDatabase() {
 
   // Add any missing columns (equivalent to your previous ALTER attempts)
   try {
-    await dbPool.query('ALTER TABLE vitour.scenes ADD COLUMN IF NOT EXISTS created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL');
-    await dbPool.query('ALTER TABLE vitour.scenes ADD COLUMN IF NOT EXISTS updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL');
-    await dbPool.query('ALTER TABLE vitour.scenes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    await dbPool.query('ALTER TABLE scenes ADD COLUMN IF NOT EXISTS created_by INT REFERENCES users(id) ON DELETE SET NULL');
+    await dbPool.query('ALTER TABLE scenes ADD COLUMN IF NOT EXISTS updated_by INT REFERENCES users(id) ON DELETE SET NULL');
+    await dbPool.query('ALTER TABLE scenes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
   } catch (e) { console.warn('scenes migration note:', e.message); }
 
   try {
-    await dbPool.query('ALTER TABLE vitour.hotspots ADD COLUMN IF NOT EXISTS created_by INT REFERENCES vitour.users(id) ON DELETE SET NULL');
-    await dbPool.query('ALTER TABLE vitour.hotspots ADD COLUMN IF NOT EXISTS updated_by INT REFERENCES vitour.users(id) ON DELETE SET NULL');
-    await dbPool.query('ALTER TABLE vitour.hotspots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    await dbPool.query('ALTER TABLE hotspots ADD COLUMN IF NOT EXISTS created_by INT REFERENCES users(id) ON DELETE SET NULL');
+    await dbPool.query('ALTER TABLE hotspots ADD COLUMN IF NOT EXISTS updated_by INT REFERENCES users(id) ON DELETE SET NULL');
+    await dbPool.query('ALTER TABLE hotspots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
   } catch (e) { console.warn('hotspots migration note:', e.message); }
 
   // 3. Create default super admin if no users exist
-  const { rows } = await dbPool.query('SELECT COUNT(*) as count FROM vitour.users');
+  const { rows } = await dbPool.query('SELECT COUNT(*) as count FROM users');
   if (parseInt(rows[0].count) === 0) {
     const defaultPassword = await bcrypt.hash('admin123', 10);
     await dbPool.query(
-      'INSERT INTO vitour.users (username, password_hash, role) VALUES ($1, $2, $3)',
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
       ['admin', defaultPassword, 'super_admin']
     );
     console.log('Default super admin created: username=admin, password=admin123');
   }
 
   // 4. Quick test query
-  const test = await dbPool.query('SELECT COUNT(*) FROM vitour.scenes');
+  const test = await dbPool.query('SELECT COUNT(*) FROM scenes');
   console.log(`Database ready – scenes in vitour: ${test.rows[0].count}`);
 }
 
@@ -282,8 +283,8 @@ async function initDatabase() {
 
 app.get('/api/scenes', async (req, res) => {
   try {
-    const { rows: scenes } = await dbPool.query('SELECT * FROM vitour.scenes ORDER BY id');
-    const { rows: hotspots } = await dbPool.query('SELECT * FROM vitour.hotspots');
+    const { rows: scenes } = await dbPool.query('SELECT * FROM scenes ORDER BY id');
+    const { rows: hotspots } = await dbPool.query('SELECT * FROM hotspots');
 
     if (scenes.length === 0) {
       return res.json({ default: { firstScene: '', autoLoad: false }, scenes: {} });
@@ -332,9 +333,9 @@ app.get('/api/scenes/list', async (req, res) => {
   try {
     const { rows } = await dbPool.query(`
       SELECT s.*, cu.username as created_by_name, uu.username as updated_by_name
-      FROM vitour.scenes s
-      LEFT JOIN vitour.users cu ON s.created_by = cu.id
-      LEFT JOIN vitour.users uu ON s.updated_by = uu.id
+      FROM scenes s
+      LEFT JOIN users cu ON s.created_by = cu.id
+      LEFT JOIN users uu ON s.updated_by = uu.id
       ORDER BY s.id
     `);
     res.json(rows);
@@ -346,19 +347,25 @@ app.get('/api/scenes/list', async (req, res) => {
 
 app.post('/api/scenes', upload.single('image'), async (req, res) => {
   try {
-    if (!req.file) {
+    const { name, description } = req.body;
+
+    let imagePath;
+    if (req.file) {
+      imagePath = generateFilename(req.file);
+      await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+    } else {
+      imagePath = req.body.imagePath || req.body.image_path;
+    }
+
+    if (!imagePath) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
-    const { name, description } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Scene name is required' });
     }
-
-    const imagePath = generateFilename(req.file);
-    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
     const { rows } = await dbPool.query(
-      `INSERT INTO vitour.scenes (name, image_path, description, created_by, updated_by, created_at, updated_at)
+      `INSERT INTO scenes (name, image_path, description, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id`,
       [name, imagePath, description || '', req.session?.userId || null, req.session?.userId || null]
     );
@@ -383,12 +390,12 @@ app.put('/api/scenes/:id', async (req, res) => {
 
     if (description !== undefined) {
       await dbPool.query(
-        `UPDATE vitour.scenes SET name = $1, description = $2, updated_by = $3, updated_at = NOW() WHERE id = $4`,
+        `UPDATE scenes SET name = $1, description = $2, updated_by = $3, updated_at = NOW() WHERE id = $4`,
         [name || '', description || '', req.session?.userId || null, id]
       );
     } else {
       await dbPool.query(
-        `UPDATE vitour.scenes SET name = $1, updated_by = $2, updated_at = NOW() WHERE id = $3`,
+        `UPDATE scenes SET name = $1, updated_by = $2, updated_at = NOW() WHERE id = $3`,
         [name || '', req.session?.userId || null, id]
       );
     }
@@ -404,13 +411,13 @@ app.delete('/api/scenes/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { rows: sceneRows } = await dbPool.query('SELECT image_path FROM vitour.scenes WHERE id = $1', [id]);
+    const { rows: sceneRows } = await dbPool.query('SELECT image_path FROM scenes WHERE id = $1', [id]);
     if (sceneRows.length > 0) {
       await deleteFromStorage(sceneRows[0].image_path);
     }
 
-    await dbPool.query('DELETE FROM vitour.hotspots WHERE scene_id = $1 OR target_scene_id = $1', [id]);
-    await dbPool.query('DELETE FROM vitour.scenes WHERE id = $1', [id]);
+    await dbPool.query('DELETE FROM hotspots WHERE scene_id = $1 OR target_scene_id = $1', [id]);
+    await dbPool.query('DELETE FROM scenes WHERE id = $1', [id]);
 
     res.json({ message: 'Scene deleted successfully' });
   } catch (error) {
@@ -425,11 +432,11 @@ app.get('/api/hotspots', async (req, res) => {
     let query = `
       SELECT h.*, s.name as scene_name, ts.name as target_scene_name,
              cu.username as created_by_name, uu.username as updated_by_name
-      FROM vitour.hotspots h
-      LEFT JOIN vitour.scenes s ON h.scene_id = s.id
-      LEFT JOIN vitour.scenes ts ON h.target_scene_id = ts.id
-      LEFT JOIN vitour.users cu ON h.created_by = cu.id
-      LEFT JOIN vitour.users uu ON h.updated_by = uu.id
+      FROM hotspots h
+      LEFT JOIN scenes s ON h.scene_id = s.id
+      LEFT JOIN scenes ts ON h.target_scene_id = ts.id
+      LEFT JOIN users cu ON h.created_by = cu.id
+      LEFT JOIN users uu ON h.updated_by = uu.id
     `;
 
     const params = [];
@@ -456,7 +463,7 @@ app.post('/api/hotspots', async (req, res) => {
     }
 
     const { rows } = await dbPool.query(
-      `INSERT INTO vitour.hotspots (scene_id, pitch, yaw, text, description, target_scene_id, created_by, updated_by, created_at, updated_at)
+      `INSERT INTO hotspots (scene_id, pitch, yaw, text, description, target_scene_id, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
       [scene_id, pitch, yaw, text || '', description || '', target_scene_id || null, req.session?.userId || null, req.session?.userId || null]
     );
@@ -482,7 +489,7 @@ app.put('/api/hotspots/:id', async (req, res) => {
     const { pitch, yaw, text, description, target_scene_id } = req.body;
 
     await dbPool.query(
-      `UPDATE vitour.hotspots SET pitch = $1, yaw = $2, text = $3, description = $4, target_scene_id = $5, updated_by = $6, updated_at = NOW() WHERE id = $7`,
+      `UPDATE hotspots SET pitch = $1, yaw = $2, text = $3, description = $4, target_scene_id = $5, updated_by = $6, updated_at = NOW() WHERE id = $7`,
       [pitch, yaw, text || '', description || '', target_scene_id || null, req.session?.userId || null, id]
     );
 
@@ -496,7 +503,7 @@ app.put('/api/hotspots/:id', async (req, res) => {
 app.delete('/api/hotspots/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await dbPool.query('DELETE FROM vitour.hotspots WHERE id = $1', [id]);
+    await dbPool.query('DELETE FROM hotspots WHERE id = $1', [id]);
     res.json({ message: 'Hotspot deleted successfully' });
   } catch (error) {
     console.error('Error deleting hotspot:', error);
@@ -509,9 +516,9 @@ app.get('/api/denah', async (req, res) => {
   try {
     const { rows } = await dbPool.query(`
       SELECT d.*, cu.username as created_by_name, uu.username as updated_by_name
-      FROM vitour.denah d
-      LEFT JOIN vitour.users cu ON d.created_by = cu.id
-      LEFT JOIN vitour.users uu ON d.updated_by = uu.id
+      FROM denah d
+      LEFT JOIN users cu ON d.created_by = cu.id
+      LEFT JOIN users uu ON d.updated_by = uu.id
       ORDER BY d.id
     `);
     res.json(rows);
@@ -523,14 +530,20 @@ app.get('/api/denah', async (req, res) => {
 
 app.post('/api/denah', upload.single('image'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
     const { name, description } = req.body;
-    if (!name) return res.status(400).json({ error: 'Denah name is required' });
 
-    const imagePath = generateFilename(req.file);
-    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+    let imagePath;
+    if (req.file) {
+      imagePath = generateFilename(req.file);
+      await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+    } else {
+      imagePath = req.body.imagePath || req.body.image_path;
+    }
+
+    if (!imagePath) return res.status(400).json({ error: 'No image uploaded' });
+    if (!name) return res.status(400).json({ error: 'Denah name is required' });
     const { rows } = await dbPool.query(
-      `INSERT INTO vitour.denah (name, image_path, description, created_by, updated_by, created_at, updated_at)
+      `INSERT INTO denah (name, image_path, description, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id`,
       [name, imagePath, description || '', req.session?.userId || null, req.session?.userId || null]
     );
@@ -547,19 +560,19 @@ app.put('/api/denah/:id', upload.single('image'), async (req, res) => {
     const { name, description } = req.body;
 
     if (req.file) {
-      const { rows: existing } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
+      const { rows: existing } = await dbPool.query('SELECT image_path FROM denah WHERE id = $1', [id]);
       if (existing.length > 0) {
         await deleteFromStorage(existing[0].image_path);
       }
       const newImagePath = generateFilename(req.file);
       await uploadToStorage(newImagePath, req.file.buffer, req.file.mimetype);
       await dbPool.query(
-        `UPDATE vitour.denah SET name = $1, description = $2, image_path = $3, updated_by = $4, updated_at = NOW() WHERE id = $5`,
+        `UPDATE denah SET name = $1, description = $2, image_path = $3, updated_by = $4, updated_at = NOW() WHERE id = $5`,
         [name || '', description || '', newImagePath, req.session?.userId || null, id]
       );
     } else {
       await dbPool.query(
-        `UPDATE vitour.denah SET name = $1, description = $2, updated_by = $3, updated_at = NOW() WHERE id = $4`,
+        `UPDATE denah SET name = $1, description = $2, updated_by = $3, updated_at = NOW() WHERE id = $4`,
         [name || '', description || '', req.session?.userId || null, id]
       );
     }
@@ -573,17 +586,17 @@ app.put('/api/denah/:id', upload.single('image'), async (req, res) => {
 app.delete('/api/denah/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
+    const { rows } = await dbPool.query('SELECT image_path FROM denah WHERE id = $1', [id]);
     if (rows.length > 0) {
       await deleteFromStorage(rows[0].image_path);
     }
-    const { rows: photos } = await dbPool.query('SELECT image_path FROM vitour.denah_photos WHERE denah_id = $1', [id]);
+    const { rows: photos } = await dbPool.query('SELECT image_path FROM denah_photos WHERE denah_id = $1', [id]);
     for (const photo of photos) {
       await deleteFromStorage(photo.image_path);
     }
-    await dbPool.query('DELETE FROM vitour.denah_photos WHERE denah_id = $1', [id]);
-    await dbPool.query('DELETE FROM vitour.denah_spheres WHERE denah_id = $1 OR target_denah_id = $1', [id]);
-    await dbPool.query('DELETE FROM vitour.denah WHERE id = $1', [id]);
+    await dbPool.query('DELETE FROM denah_photos WHERE denah_id = $1', [id]);
+    await dbPool.query('DELETE FROM denah_spheres WHERE denah_id = $1 OR target_denah_id = $1', [id]);
+    await dbPool.query('DELETE FROM denah WHERE id = $1', [id]);
     res.json({ message: 'Denah deleted successfully' });
   } catch (error) {
     console.error('Error deleting denah:', error);
@@ -594,7 +607,7 @@ app.delete('/api/denah/:id', async (req, res) => {
 // ---------- FLOOR PLAN ----------
 app.get('/api/floorplan', async (req, res) => {
   try {
-    const { rows } = await dbPool.query('SELECT * FROM vitour.floor_plan ORDER BY id DESC LIMIT 1');
+    const { rows } = await dbPool.query('SELECT * FROM floor_plan ORDER BY id DESC LIMIT 1');
     if (rows.length === 0) return res.json({ image_path: null });
     res.json(rows[0]);
   } catch (error) {
@@ -605,21 +618,26 @@ app.get('/api/floorplan', async (req, res) => {
 
 app.post('/api/floorplan', upload.single('image'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+    let imagePath;
+    if (req.file) {
+      imagePath = generateFilename(req.file);
+      await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+    } else {
+      imagePath = req.body.imagePath || req.body.image_path;
+    }
 
-    const imagePath = generateFilename(req.file);
-    await uploadToStorage(imagePath, req.file.buffer, req.file.mimetype);
+    if (!imagePath) return res.status(400).json({ error: 'No image uploaded' });
 
-    const { rows: existing } = await dbPool.query('SELECT * FROM vitour.floor_plan ORDER BY id DESC LIMIT 1');
+    const { rows: existing } = await dbPool.query('SELECT * FROM floor_plan ORDER BY id DESC LIMIT 1');
     if (existing.length > 0) {
       await deleteFromStorage(existing[0].image_path);
       await dbPool.query(
-        `UPDATE vitour.floor_plan SET image_path = $1, updated_by = $2, updated_at = NOW() WHERE id = $3`,
+        `UPDATE floor_plan SET image_path = $1, updated_by = $2, updated_at = NOW() WHERE id = $3`,
         [imagePath, req.session?.userId || null, existing[0].id]
       );
     } else {
       await dbPool.query(
-        `INSERT INTO vitour.floor_plan (image_path, updated_by) VALUES ($1, $2)`,
+        `INSERT INTO floor_plan (image_path, updated_by) VALUES ($1, $2)`,
         [imagePath, req.session?.userId || null]
       );
     }
@@ -636,11 +654,11 @@ app.get('/api/denah-spheres', async (req, res) => {
     const { rows } = await dbPool.query(`
       SELECT ds.*, d.name as denah_name, td.name as target_denah_name,
              cu.username as created_by_name, uu.username as updated_by_name
-      FROM vitour.denah_spheres ds
-      LEFT JOIN vitour.denah d ON ds.denah_id = d.id
-      LEFT JOIN vitour.denah td ON ds.target_denah_id = td.id
-      LEFT JOIN vitour.users cu ON ds.created_by = cu.id
-      LEFT JOIN vitour.users uu ON ds.updated_by = uu.id
+      FROM denah_spheres ds
+      LEFT JOIN denah d ON ds.denah_id = d.id
+      LEFT JOIN denah td ON ds.target_denah_id = td.id
+      LEFT JOIN users cu ON ds.created_by = cu.id
+      LEFT JOIN users uu ON ds.updated_by = uu.id
       ORDER BY ds.id
     `);
     res.json(rows);
@@ -657,7 +675,7 @@ app.post('/api/denah-spheres', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const { rows } = await dbPool.query(
-      `INSERT INTO vitour.denah_spheres (denah_id, x, y, text, target_denah_id, created_by, updated_by, created_at, updated_at)
+      `INSERT INTO denah_spheres (denah_id, x, y, text, target_denah_id, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
       [denah_id, x, y, text || '', target_denah_id || null, req.session?.userId || null, req.session?.userId || null]
     );
@@ -673,7 +691,7 @@ app.put('/api/denah-spheres/:id', async (req, res) => {
     const { id } = req.params;
     const { x, y, text, target_denah_id } = req.body;
     await dbPool.query(
-      `UPDATE vitour.denah_spheres SET x = $1, y = $2, text = $3, target_denah_id = $4, updated_by = $5, updated_at = NOW() WHERE id = $6`,
+      `UPDATE denah_spheres SET x = $1, y = $2, text = $3, target_denah_id = $4, updated_by = $5, updated_at = NOW() WHERE id = $6`,
       [x, y, text || '', target_denah_id || null, req.session?.userId || null, id]
     );
     res.json({ message: 'Denah sphere updated successfully' });
@@ -686,7 +704,7 @@ app.put('/api/denah-spheres/:id', async (req, res) => {
 app.delete('/api/denah-spheres/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await dbPool.query('DELETE FROM vitour.denah_spheres WHERE id = $1', [id]);
+    await dbPool.query('DELETE FROM denah_spheres WHERE id = $1', [id]);
     res.json({ message: 'Denah sphere deleted successfully' });
   } catch (error) {
     console.error('Error deleting denah sphere:', error);
@@ -698,11 +716,11 @@ app.delete('/api/denah-spheres/:id', async (req, res) => {
 app.get('/api/denah/:id/photos', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows: denah } = await dbPool.query('SELECT image_path FROM vitour.denah WHERE id = $1', [id]);
+    const { rows: denah } = await dbPool.query('SELECT image_path FROM denah WHERE id = $1', [id]);
     if (denah.length === 0) return res.status(404).json({ error: 'Denah not found' });
 
     const { rows: photos } = await dbPool.query(
-      'SELECT * FROM vitour.denah_photos WHERE denah_id = $1 ORDER BY sort_order, id',
+      'SELECT * FROM denah_photos WHERE denah_id = $1 ORDER BY sort_order, id',
       [id]
     );
 
@@ -720,29 +738,42 @@ app.get('/api/denah/:id/photos', async (req, res) => {
 app.post('/api/denah/:id/photos', upload.array('images', 20), async (req, res) => {
   try {
     const { id } = req.params;
-    if (!req.files || req.files.length === 0) {
+
+    const multipartFiles = req.files || [];
+    const jsonPaths = Array.isArray(req.body.imagePaths)
+      ? req.body.imagePaths.filter(Boolean)
+      : [];
+
+    if (multipartFiles.length === 0 && jsonPaths.length === 0) {
       return res.status(400).json({ error: 'No images uploaded' });
     }
 
-    const { rows: existing } = await dbPool.query('SELECT id FROM vitour.denah WHERE id = $1', [id]);
+    const { rows: existing } = await dbPool.query('SELECT id FROM denah WHERE id = $1', [id]);
     if (existing.length === 0) return res.status(404).json({ error: 'Denah not found' });
 
     const { rows: lastPhoto } = await dbPool.query(
-      'SELECT MAX(sort_order) as max_order FROM vitour.denah_photos WHERE denah_id = $1',
+      'SELECT MAX(sort_order) as max_order FROM denah_photos WHERE denah_id = $1',
       [id]
     );
     let nextOrder = (lastPhoto[0].max_order || 0) + 1;
 
     const inserted = [];
-    for (const file of req.files) {
-      const imagePath = generateFilename(file);
-      await uploadToStorage(imagePath, file.buffer, file.mimetype);
+    const addPhoto = async (imagePath) => {
       const { rows } = await dbPool.query(
-        `INSERT INTO vitour.denah_photos (denah_id, image_path, sort_order, created_at)
+        `INSERT INTO denah_photos (denah_id, image_path, sort_order, created_at)
          VALUES ($1, $2, $3, NOW()) RETURNING id`,
         [id, imagePath, nextOrder++]
       );
       inserted.push({ id: rows[0].id, image_path: imagePath });
+    };
+
+    for (const file of multipartFiles) {
+      const imagePath = generateFilename(file);
+      await uploadToStorage(imagePath, file.buffer, file.mimetype);
+      await addPhoto(imagePath);
+    }
+    for (const imagePath of jsonPaths) {
+      await addPhoto(imagePath);
     }
 
     res.json({ message: `${inserted.length} photo(s) uploaded`, photos: inserted });
@@ -760,7 +791,7 @@ app.put('/api/denah/photos/reorder', async (req, res) => {
     }
     for (const item of items) {
       await dbPool.query(
-        'UPDATE vitour.denah_photos SET sort_order = $1 WHERE id = $2',
+        'UPDATE denah_photos SET sort_order = $1 WHERE id = $2',
         [item.sort_order, item.id]
       );
     }
@@ -774,11 +805,11 @@ app.put('/api/denah/photos/reorder', async (req, res) => {
 app.delete('/api/denah/photos/:photoId', async (req, res) => {
   try {
     const { photoId } = req.params;
-    const { rows } = await dbPool.query('SELECT image_path FROM vitour.denah_photos WHERE id = $1', [photoId]);
+    const { rows } = await dbPool.query('SELECT image_path FROM denah_photos WHERE id = $1', [photoId]);
     if (rows.length === 0) return res.status(404).json({ error: 'Photo not found' });
 
     await deleteFromStorage(rows[0].image_path);
-    await dbPool.query('DELETE FROM vitour.denah_photos WHERE id = $1', [photoId]);
+    await dbPool.query('DELETE FROM denah_photos WHERE id = $1', [photoId]);
     res.json({ message: 'Photo deleted successfully' });
   } catch (error) {
     console.error('Error deleting denah photo:', error);
@@ -794,7 +825,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const { rows } = await dbPool.query('SELECT * FROM vitour.users WHERE username = $1', [username]);
+    const { rows } = await dbPool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (rows.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
@@ -860,29 +891,29 @@ app.get('/api/activity-log', requireSuperAdmin, async (req, res) => {
     const { rows } = await dbPool.query(`
       SELECT 'scene_created' as action, s.name as item_name, s.id as item_id,
              u.username as actor, s.updated_at as action_time, s.description
-      FROM vitour.scenes s JOIN vitour.users u ON s.created_by = u.id
+      FROM scenes s JOIN users u ON s.created_by = u.id
       UNION ALL
       SELECT 'scene_updated' as action, s.name as item_name, s.id as item_id,
              u.username as actor, s.updated_at as action_time, s.description
-      FROM vitour.scenes s JOIN vitour.users u ON s.updated_by = u.id
+      FROM scenes s JOIN users u ON s.updated_by = u.id
       WHERE s.created_at != s.updated_at
       UNION ALL
       SELECT 'hotspot_created' as action, 'Hotspot pada ' || s.name as item_name, h.id as item_id,
              u.username as actor, h.updated_at as action_time, h.description
-      FROM vitour.hotspots h JOIN vitour.scenes s ON h.scene_id = s.id JOIN vitour.users u ON h.created_by = u.id
+      FROM hotspots h JOIN scenes s ON h.scene_id = s.id JOIN users u ON h.created_by = u.id
       UNION ALL
       SELECT 'hotspot_updated' as action, 'Hotspot pada ' || s.name as item_name, h.id as item_id,
              u.username as actor, h.updated_at as action_time, h.description
-      FROM vitour.hotspots h JOIN vitour.scenes s ON h.scene_id = s.id JOIN vitour.users u ON h.updated_by = u.id
+      FROM hotspots h JOIN scenes s ON h.scene_id = s.id JOIN users u ON h.updated_by = u.id
       WHERE h.created_at != h.updated_at
       UNION ALL
       SELECT 'denah_created' as action, d.name as item_name, d.id as item_id,
              u.username as actor, d.updated_at as action_time, d.description
-      FROM vitour.denah d JOIN vitour.users u ON d.created_by = u.id
+      FROM denah d JOIN users u ON d.created_by = u.id
       UNION ALL
       SELECT 'denah_updated' as action, d.name as item_name, d.id as item_id,
              u.username as actor, d.updated_at as action_time, d.description
-      FROM vitour.denah d JOIN vitour.users u ON d.updated_by = u.id
+      FROM denah d JOIN users u ON d.updated_by = u.id
       WHERE d.created_at != d.updated_at
       ORDER BY action_time DESC
       LIMIT 50
@@ -897,7 +928,7 @@ app.get('/api/activity-log', requireSuperAdmin, async (req, res) => {
 // ---------- USERS MANAGEMENT ----------
 app.get('/api/users', requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await dbPool.query('SELECT id, username, role, created_at FROM vitour.users ORDER BY created_at DESC');
+    const { rows } = await dbPool.query('SELECT id, username, role, created_at FROM users ORDER BY created_at DESC');
     res.json(rows);
   } catch (error) {
     console.error('Get users error:', error);
@@ -911,12 +942,12 @@ app.post('/api/users', requireSuperAdmin, async (req, res) => {
     if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
-    const { rows: existing } = await dbPool.query('SELECT id FROM vitour.users WHERE username = $1', [username]);
+    const { rows: existing } = await dbPool.query('SELECT id FROM users WHERE username = $1', [username]);
     if (existing.length > 0) return res.status(409).json({ error: 'Username already exists' });
 
     const passwordHash = await bcrypt.hash(password, 10);
     const { rows: newUser } = await dbPool.query(
-      `INSERT INTO vitour.users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id`,
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id`,
       [username, passwordHash, role || 'admin']
     );
 
@@ -935,7 +966,7 @@ app.delete('/api/users/:id', requireSuperAdmin, async (req, res) => {
     const userId = parseInt(req.params.id);
     if (userId === req.session.userId) return res.status(403).json({ error: 'Cannot delete your own account' });
 
-    const { rowCount } = await dbPool.query('DELETE FROM vitour.users WHERE id = $1', [userId]);
+    const { rowCount } = await dbPool.query('DELETE FROM users WHERE id = $1', [userId]);
     if (rowCount === 0) return res.status(404).json({ error: 'User not found' });
 
     res.json({ message: 'User deleted successfully' });
@@ -953,10 +984,10 @@ app.put('/api/users/:id', requireSuperAdmin, async (req, res) => {
     if (password) {
       if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
       const passwordHash = await bcrypt.hash(password, 10);
-      await dbPool.query('UPDATE vitour.users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+      await dbPool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
     }
     if (role) {
-      await dbPool.query('UPDATE vitour.users SET role = $1 WHERE id = $2', [role, userId]);
+      await dbPool.query('UPDATE users SET role = $1 WHERE id = $2', [role, userId]);
     }
 
     res.json({ message: 'User updated successfully' });
